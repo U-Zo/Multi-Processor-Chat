@@ -5,8 +5,10 @@ int client_socket;
 char user_account[20];
 
 int initSock(int, char *);
-int compare_account(char *, char *);
+void writeTo();
 void menu();
+void getUserInfo(Kind, Data *);
+int compare_account(char *, char *);
 
 int main(int argc, char *argv[]) {
 	pthread_t thIDr, thIDw;
@@ -194,4 +196,96 @@ int do_order(char *account, char *str) {
 	}
 
 	return 0;
+}
+
+void writeTo() {
+	char str[250];
+	char od[100];
+	Packet packet;
+	Message message;
+
+	while (1) {
+		printf("I:");
+		fgets(str, 250, stdin);
+		if (strlen(str) > 140) {
+			printf("Your message is larger than 140 characters.\n");
+			printf("Please type the content again.\n");
+		}
+		else if (!strcmp(str, "quit\n") || !strcmp(str, "exit\n") ||
+			!strcmp(str, "QUIT\n") || !strcmp(str, "EXIT\n")) {
+			if (build_packet(&packet, enum_logout, message) == -1) {
+				printf("fail to build the packet!\n");
+				return;
+			}
+			write(client_socket, &packet, sizeof(Packet));
+			return;
+		}
+		else if ((!strcmp(str, "/kick\n") || !strcmp(str, "/ban\n") ||
+			!strcmp(str, "/w\n")) && !strcmp(user_account, "admin")) {
+			printf("Enter username. : ");
+			fgets(od, 100, stdin);
+			od[strlen(od) - 1] = '\0';
+
+			if (!strcmp(str, "/kick\n")) {
+				strcpy(message.str, "/kick:");
+				strcat(message.str, od);
+			}
+			else if (!strcmp(str, "/ban\n")) {
+				strcpy(message.str, "/ban:");
+				strcat(message.str, od);
+			}
+			else if (!strcmp(str, "/w\n")) {
+				strcpy(message.str, "/w:");
+				strcat(message.str, od);
+			}
+
+			if (build_packet(&packet, enum_chat, message) == -1) {
+				printf("fail to build the packet!\n");
+				return;
+			}
+			write(client_socket, &packet, sizeof(Packet));
+		}
+
+		else {
+			str[strlen(str) - 1] = '\0';
+			strcpy(message.str, user_account);
+			strcat(message.str, ":");
+			strcat(message.str, str);
+			if (build_packet(&packet, enum_chat, message) == -1) {
+				printf("fail to build the packet!\n");
+				return;
+			}
+			write(client_socket, &packet, sizeof(Packet));
+		}
+	}
+}
+
+void getUserInfo(Kind kind, Data *data) {
+	char password_check[20];
+	do {
+		printf("Please input your account:");
+		scanf("%s", data->userinfo.account);
+		if (strlen(data->userinfo.account) > 19)
+			printf("The length of account should be shortter than 19 characters.\n");
+	} while (strlen(data->userinfo.account) > 19);
+	do {
+		do {
+			printf("Please input your password:");
+			scanf("%s", data->userinfo.password);
+			if (strlen(data->userinfo.password) > 19)
+				printf("The length of password should be shortter than 19 characters.\n");
+		} while (strlen(data->userinfo.password) > 19);
+		if (kind != enum_regist)
+			strcpy(password_check, data->userinfo.password);
+		else {
+			do {
+				printf("Please input your password again:");
+				scanf("%s", password_check);
+				if (strlen(password_check) > 19)
+					printf("The length of password should be shortter than 19 characters.\n");
+			} while (strlen(password_check) > 19);
+		}
+		if (strcmp(data->userinfo.password, password_check))
+			printf("The password you entered should be consistent.\n");
+	} while (strcmp(data->userinfo.password, password_check));
 }
