@@ -5,6 +5,7 @@ int client_socket;
 char user_account[20];
 
 int initSock(int, char *);
+void readFrom();
 void writeTo();
 void menu();
 void getUserInfo(Kind, Data *);
@@ -196,6 +197,32 @@ int do_order(char *account, char *str) {
 	}
 
 	return 0;
+}
+
+void readFrom() {
+	Packet packet;
+	Kind kind;
+	Data data;
+
+	while (1) {
+		read(client_socket, &packet, sizeof(Packet));
+		parse_packet(packet, &kind, &data);
+		if (kind != enum_chat) {
+			printf("the type of the packet received is error!\n");
+			return;
+		}
+
+		lastmessage = data.message.id;
+
+		if (do_order(user_account, data.message.str) == -1)
+			return;
+
+		if (compare_account(user_account, data.message.str)) {
+			printf("\b\b%s\n", data.message.str);
+			printf("I:");
+			fflush(stdout);
+		}
+	}
 }
 
 void writeTo() {
